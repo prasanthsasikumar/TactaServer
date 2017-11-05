@@ -1,5 +1,6 @@
 var socket = io();
 var boardTypes = ["TACTAVEST", "TACTAFAN"];
+var hardCodedBoardValues = {limit:8,min:80,max:255,value:100};
 
 /*****************************************************
     CREATING THE UI FOR TACTABOARD WITH SLIDERS
@@ -191,10 +192,10 @@ $('form').submit(function() {
 
 socket.on('ConnectionSucess', function(board) {
   document.getElementById("portsTable").style.display = "none";
-  board["limit"] = 8;
-  board["min"] = 80;
-  board["max"] = 255;
-  board["value"] = 100;
+  board["limit"] = hardCodedBoardValues.limit;
+  board["min"] = hardCodedBoardValues.min;
+  board["max"] = hardCodedBoardValues.max;
+  board["value"] = hardCodedBoardValues.value;
   console.log(board);
   document.getElementById("sliderDiv").appendChild(getSliders(board));
 
