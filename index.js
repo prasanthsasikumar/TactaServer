@@ -5,10 +5,9 @@ const io = require('socket.io')(http);
 const util = require('util');
 const SerialPort = require('serialport');
 const createTable = require('data-table')
-const baudRate = 19200;
 var clients = [];
 var ports = {};
-//var port;
+
 /*****************************************************
         STARTING A LOCAL SERVER
 *****************************************************/
@@ -25,35 +24,28 @@ http.listen(3000, function() {
     SOCKET CONNECTION AND WHAT TO DO WITH EACH
 *****************************************************/
 io.on('connection', function(socket) {
-  //track connected clients via log
-  clients.push(socket.id);
+
+  clients.push(socket.id); //track connected clients via log
   var clientConnectedMsg = 'User connected ' + util.inspect(socket.id) + ', total: ' + clients.length;
-  io.emit('dataLog', clientConnectedMsg);
+  io.emit('log', clientConnectedMsg);
   //console.log(clientConnectedMsg);
 
-  //track disconnected clients via log
-  socket.on('disconnect', function() {
+  socket.on('disconnect', function() { //track disconnected clients via log
     clients.pop(socket.id);
     var clientDisconnectedMsg = 'User disconnected ' + util.inspect(socket.id) + ', total: ' + clients.length;
-    io.emit('dataLog', clientDisconnectedMsg);
+    io.emit('log', clientDisconnectedMsg);
     console.log(clientDisconnectedMsg);
   })
 
-  socket.on('dataLog', function(command) {
-    //var command = 'Command: ' + command; //var combinedMsg = socket.id.substring(0, 4) + ':data: ' + msg;
-    io.emit('dataLog', command);
+  socket.on('command', function(command) {
+    //var combinedMsg = socket.id.substring(0, 4) + msg;
+    io.emit('log', command);
     processCommand(command);
-    /*if (isBoardConnected) {
-      port.write(msg);
-    } else {
-      io.emit('dataLog', "Board not connected");
-    }*/
   });
 
   socket.on('query', function(query) {
     processQuery(query);
   });
-
 });
 
 /*****************************************************
@@ -73,28 +65,35 @@ function findBoards() {
 }
 
 /*****************************************************
-        CONNECTING TO TACTAVEST
+        CONNECTING TO TACTABOARD
 *****************************************************/
 function connectToBoard(board) {
-  if (port) {
-    port.close();
+
+  if (ports[board.boardPort]) {
+    io.emit('log', "Port Already Connected!");
+    return;
   }
-  const Readline = SerialPort.parsers.Readline;
   var port = new SerialPort(board.boardPort, {
-    baudRate: baudRate
+    baudRate: board.baudRate
   });
-  const parser = new Readline(); //reason why \n is required in arduino
+  const ByteLength = SerialPort.parsers.ByteLength;
+  const parser = port.pipe(new ByteLength({
+    length: 1
+  }));
   port.pipe(parser);
 
   function respondToBoard(data) { //METHOD THAT GETS CALLED WHEN DATA IS RECEIVED
-    var boardMsg = "Board : " + data;
-    console.log(boardMsg);
-    //io.emit('dataLog', boardMsg);
+    var log = "Board : " + data;
+    //console.log(log);
+    if (board.debug) { //IF DEBUG IS ENABLED ALL BOARD RESPONSES WILL BE SEND TO THE WEBPAGE
+      io.emit('log', log);
+    }
     if (data == "*") {
       if (!board.isConnected) {
         board.isConnected = true;
-        io.emit('dataLog', "TactaVest Connected");
-        io.emit('ConnectionSucess', board);
+        ports[board.boardPort] = port;
+        io.emit('log', board.boardType + " connected at " + board.boardPort);
+        io.emit('connected', board);
       }
     }
   };
@@ -103,17 +102,27 @@ function connectToBoard(board) {
     var buffer = new Buffer(2);
     buffer[0] = 0x2A;
     buffer[1] = 0x2A;
-    ports[board.boardPort].write(buffer, 'hex');
+    port.write(buffer, 'hex');
   };
   parser.on('data', respondToBoard);
-  setTimeout(verifyConnection, 1000);
-  ports[board.boardPort] = port;
+  setTimeout(verifyConnection, 1700);
 }
 
 /*****************************************************
+        DISCONNECTING TACTABOARD
+*****************************************************/
+function disconnectBoard(board) {
+  ports[board.boardPort].close(function() {
+    delete ports[board.boardPort];
+    board.isConnected = false;
+    io.emit('log', board.boardType + " disconnected from " + board.boardPort);
+    io.emit('disconnected', board);
+  })
+}
+/*****************************************************
     BYTE ARRAYS THAT PERFORM VARIOUS TASKS
 *****************************************************/
-function enableTactorPins() {
+function enableTactorPins(board) {
   var buffer = new Buffer(6);
   buffer[0] = 0x2A;
   buffer[1] = 0x50;
@@ -156,14 +165,14 @@ function toHex(d) { //CONVERT DECIMAL TO HEX
 /*****************************************************
         METHOD TO PROCESS COMMAND
 *****************************************************/
-function processCommand(command) {
+function processCommand(command) { //Verify and process command
   var badCommandResponse = "Please enter Commands with syntax - (COMXX,tactorNo,intensity)";
   if (command.startsWith("(") && command.endsWith(")")) {
     command = command.replace('(', '');
     command = command.replace(')', '');
     var array = command.split(',');
     if (array.length != 3 || !isInt(array[1]) || !isInt(array[2])) { //check if all are integer
-      io.emit('dataLog', badCommandResponse);
+      io.emit('log', badCommandResponse);
       return;
     }
     var isConnected = false;
@@ -185,7 +194,7 @@ function processCommand(command) {
     };
     processQuery(query);
   } else {
-    io.emit('dataLog', badCommandResponse);
+    io.emit('log', badCommandResponse);
   }
 }
 
@@ -204,12 +213,14 @@ function processQuery(query) {
   } else if (query.command == "connectDevice") {
     connectToBoard(query.board);
   } else if (!query.board.isConnected) {
-    io.emit('dataLog', "Board not Connected");
+    io.emit('log', "Board not Connected");
     return;
   }
   if (query.command == "controlAll") {
     controlAll(query);
   } else if (query.command == "controlOne") {
     controlOne(query);
+  } else if (query.command == "disconnectBoard") {
+    disconnectBoard(query.board);
   }
 }

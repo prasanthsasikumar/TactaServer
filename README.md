@@ -19,7 +19,14 @@ Please refer to it to learn how to run this application.
 
     ```
     var boardTypes = ["TACTAVEST", "TACTAFAN"];
-    var hardCodedBoardValues = {limit:8,min:80,max:255,value:100};
+    var hardCodedBoardValues = {
+      baudRate: 19200,
+      limit: 8,
+      min: 80,
+      max: 255,
+      value: 100,
+      debug: false
+    };
 
     ```
  3. Run command `npm install` in `~/TactaServer` directory.

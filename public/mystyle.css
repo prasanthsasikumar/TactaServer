@@ -44,26 +44,6 @@
     background: #eee;
   }
 
-  #portsAvail {
-    list-style-type: none;
-    margin: 0;
-    padding: 10px;
-  }
-
-  #portsAvail li {
-    padding: 5px 5px;
-  }
-
-  #portsAvail li:nth-child(odd) {
-    background: #eee;
-  }
-  #portsAvail li:hover
-   {
-      border: 3px solid #FFFFFF;
-      border-radius: 10px;
-      background-color: #dd417f;
-  }
-
   .button {
   background-color: #4CAF50; /* Green */
   border: none;
