@@ -43,7 +43,7 @@ Please refer to it to learn how to run this application.
 | `boardTypes` | `BoardTypes` | Type of Boards Available |
 
 ## For Developers
-//have to update
+//comming soon
 
 USAGE :
-//Will update
+npm start
