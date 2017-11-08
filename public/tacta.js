@@ -2,7 +2,7 @@ var socket = io();
 var boardTypes = ["TACTAVEST", "TACTAFAN"];
 var hardCodedBoardValues = {
   baudRate: 19200,
-  limit: 8,
+  limit: 16,
   min: 80,
   max: 255,
   value: 100,
@@ -65,7 +65,6 @@ addButton.onclick = function() {
     debug: hardCodedBoardValues.debug,
     isConnected: false,
   };
-  console.log(board);
   socket.emit('query', {
     command: "connectDevice",
     board: board
@@ -127,33 +126,54 @@ function getSliders(board) {
   sliderRow.id = "sliderRow";
   sliderRow.className = "row";
 
-  var boardDetails = document.createElement("div");
-  boardDetails.id = "sliderCboardDetailsontainer";
-  boardDetails.className = "well";
-  boardDetails.style.textAlign = "center";
+  //Start Creating boardDetails
+  var checkboxSpan = document.createElement("SPAN");
+  checkboxSpan.className = "debugSlider round";
+  var checkbox = document.createElement('input');
+  checkbox.type = "checkbox";
+  checkbox.addEventListener("change", function() {
+    if(this.checked) {
+        board.debug = true;
+    } else {
+        board.debug = false;
+    }
+  });
+  var checkboxLabel = document.createElement("LABEL");
+  checkboxLabel.className ="switch";
+  checkboxLabel.style = "float: left;"
+  checkboxLabel.appendChild(checkbox);
+  checkboxLabel.appendChild(checkboxSpan);
 
+  var mainText = document.createTextNode(board.boardType + " connected at " + board.boardPort + ""); // Create a text node
+
+  var disconnectSpan = document.createElement("SPAN");
+  disconnectSpan.className = "glyphicon glyphicon-link"; //"glyphicon glyphicon-remove-sign";
+  disconnectSpan.innerHTML = "Disconnect";
   var disconnectButton = document.createElement("BUTTON");
   disconnectButton.className = "btn btn-danger btn-sm";
   disconnectButton.style = "float: right;"
   disconnectButton.addEventListener("click", function() {
     socket.emit('query', {
-      command: "disconnectBoard",
+      command: "disconnectDevice",
       board: board
     });
   }, false);
-  var disconnectSpan = document.createElement("SPAN");
-  disconnectSpan.className = "glyphicon glyphicon-link"; //"glyphicon glyphicon-remove-sign";
-  disconnectSpan.innerHTML = "Disconnect";
   disconnectButton.appendChild(disconnectSpan);
 
   var heading = document.createElement("H3") // Create a <h1> element
-  var text = document.createTextNode(board.boardType + " connected at " + board.boardPort + ""); // Create a text node
-  heading.appendChild(text);
+  heading.appendChild(checkboxLabel);
+  heading.appendChild(mainText);
   heading.appendChild(disconnectButton);
+
+  var boardDetails = document.createElement("div");
+  boardDetails.id = "sliderCboardDetailsontainer";
+  boardDetails.className = "well";
+  boardDetails.style.textAlign = "center";
   boardDetails.appendChild(heading);
+
   sliderRow.appendChild(boardDetails);
 
-  for (i = 1; i <= board.limit + 1; i++) { //CREATING AS MANY SLIDERS AS NEEDED
+  for (i = 0; i <= board.limit; i++) { //CREATING AS MANY SLIDERS AS NEEDED
     (function() {
       var sliderInnerDiv = document.createElement("div");
       sliderInnerDiv.id = "sliderInnerDiv";
@@ -191,12 +211,12 @@ function getSliders(board) {
       });
 
       //Adding a master Slider
-      if (i == board.limit + 1) {
+      if (i == board.limit) {
         slider.id = "masterSlider";
         sliderInnerDiv.className = "col-xs-12";
         sliderText.innerHTML = "Master Slider";
         slider.addEventListener("change", function() { //Change all sliders when the master slider is changed
-          for (j = 1; j <= board.limit; j++) {
+          for (j = 0; j < board.limit; j++) {
             document.getElementById(board.boardPort + "sliderValue" + j).innerHTML = this.value;
             document.getElementById(board.boardPort + "tacta" + j).value = this.value;
           }

@@ -68,11 +68,11 @@ function findBoards() {
         CONNECTING TO TACTABOARD
 *****************************************************/
 function connectToBoard(board) {
-
   if (ports[board.boardPort]) {
     io.emit('log', "Port Already Connected!");
     return;
   }
+  //io.emit('log', JSON.stringify(board));
   var port = new SerialPort(board.boardPort, {
     baudRate: board.baudRate
   });
@@ -84,7 +84,6 @@ function connectToBoard(board) {
 
   function respondToBoard(data) { //METHOD THAT GETS CALLED WHEN DATA IS RECEIVED
     var log = "Board : " + data;
-    //console.log(log);
     if (board.debug) { //IF DEBUG IS ENABLED ALL BOARD RESPONSES WILL BE SEND TO THE WEBPAGE
       io.emit('log', log);
     }
@@ -111,7 +110,7 @@ function connectToBoard(board) {
 /*****************************************************
         DISCONNECTING TACTABOARD
 *****************************************************/
-function disconnectBoard(board) {
+function disconnectDevice(board) {
   ports[board.boardPort].close(function() {
     delete ports[board.boardPort];
     board.isConnected = false;
@@ -126,7 +125,7 @@ function enableTactorPins(board) {
   var buffer = new Buffer(6);
   buffer[0] = 0x2A;
   buffer[1] = 0x50;
-  buffer[2] = 0x50;
+  buffer[2] = 0x00;
   buffer[3] = 0xFF;
   buffer[4] = 0xFF;
   buffer[5] = 0xFF;
@@ -134,32 +133,42 @@ function enableTactorPins(board) {
 }
 
 function controlAll(query) {
-  var buffer = new Buffer(7);
-  buffer[0] = 0x2A;
-  buffer[1] = 0x56;
-  buffer[2] = 0x56;
-  buffer[3] = 0xFF;
-  buffer[4] = query.intensity.toString(16);
-  buffer[5] = 0xFF;
-  buffer[6] = 0xFF;
+  var buffer = new Buffer(6);
+  buffer[0] = 0x2A;//Star
+  buffer[1] = 0x56;//V
+  buffer[2] = 0x00;//BoardID
+  buffer[3] = 0xFF;//BroadCast
+  buffer[4] = query.intensity.toString(16);//Intensity
+  buffer[5] = calculateCheckSum(buffer);//Checksum
+  //console.log(buffer);
   ports[query.board.boardPort].write(buffer, 'hex');
 }
 
 function controlOne(query) {
-  var buffer = new Buffer(7);
+  var buffer = new Buffer(6);
   buffer[0] = 0x2A;
   buffer[1] = 0x56;
-  buffer[2] = 0x56;
+  buffer[2] = 0x00;
   buffer[3] = query.tactor.tactorNo;
   buffer[4] = query.tactor.intensity.toString(16);
-  buffer[5] = 0xFF;
-  buffer[6] = 0xFF;
+  buffer[5] = calculateCheckSum(buffer);
   //console.log(buffer);
   ports[query.board.boardPort].write(buffer, 'hex');
 }
 
 function toHex(d) { //CONVERT DECIMAL TO HEX
   return ("0" + (Number(d).toString(16))).slice(-2).toUpperCase()
+}
+
+/*****************************************************
+        METHOD TO CALCULATE CHECKSUM
+*****************************************************/
+function calculateCheckSum(buffer){
+  var checkSum = buffer[0];
+  for(i=1 ;i<buffer.length-1;i++){
+  checkSum ^=buffer[i]
+  }
+  return checkSum;
 }
 
 /*****************************************************
@@ -171,7 +180,7 @@ function processCommand(command) { //Verify and process command
     command = command.replace('(', '');
     command = command.replace(')', '');
     var array = command.split(',');
-    if (array.length != 3 || !isInt(array[1]) || !isInt(array[2])) { //check if all are integer
+    if (array.length != 3 || !isInt(array[2])) { //check if all are integer
       io.emit('log', badCommandResponse);
       return;
     }
@@ -192,7 +201,13 @@ function processCommand(command) { //Verify and process command
       tactor: tactor,
       board: board
     };
-    processQuery(query);
+    if (array[1] == "all") {
+      query.command = "controlAll";
+      query.intensity = array[2];
+      processQuery(query);
+    } else {
+      processQuery(query);
+    }
   } else {
     io.emit('log', badCommandResponse);
   }
@@ -208,6 +223,10 @@ function isInt(value) {
         METHOD TO PROCESS QUERY
 *****************************************************/
 function processQuery(query) {
+  if (query.constructor === "test".constructor) {
+    query = JSON.parse(query.toString());
+    //io.emit('log',JSON.stringify(query.board));
+  }
   if (query.command == "getPortsList") {
     findBoards();
   } else if (query.command == "connectDevice") {
@@ -220,7 +239,7 @@ function processQuery(query) {
     controlAll(query);
   } else if (query.command == "controlOne") {
     controlOne(query);
-  } else if (query.command == "disconnectBoard") {
-    disconnectBoard(query.board);
+  } else if (query.command == "disconnectDevice") {
+    disconnectDevice(query.board);
   }
 }
