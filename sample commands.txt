@@ -1,0 +1,34 @@
+Command to control the pin has 6 Bytes
+0 -- > STAR 42 *
+1 -- > V 56 V
+2 -- > Board_ID Integer
+3 -- > BroadCast/Pin Number
+4 -- > Intensity Level 0-255 (In hex)
+5 -- >CheckSum
+
+Enable Pin Command
+2A 50 00 FF FF
+
+All Pins High
+2a 56 00 00 ff 83
+
+
+
+2A 56 00 FF FF FF
+
+2A 56 00 01 03 80
+
+2A 56 00 56 00 FF FF
+
+
+
+(COM7,00,255)
+(COM9,01,255)
+
+(COM7,all,255)
+
+
+
+{"command":"connectDevice","board":{ "boardPort": "COM7","boardType": "TACTAVEST","baudRate": 19200,"debug": false,"isConnected": false }}
+
+{"command":"disconnectDevice","board":{ "boardPort": "COM7","boardType": "TACTAVEST","baudRate": 19200,"debug": false,"isConnected": true}}

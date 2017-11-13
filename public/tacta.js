@@ -6,7 +6,8 @@ var hardCodedBoardValues = {
   min: 80,
   max: 255,
   value: 100,
-  debug: false
+  debug: false,
+  verifyConnection:false
 };
 
 /*****************************************************
@@ -64,6 +65,7 @@ addButton.onclick = function() {
     baudRate: hardCodedBoardValues.baudRate,
     debug: hardCodedBoardValues.debug,
     isConnected: false,
+    verifyConnection:hardCodedBoardValues.verifyConnection
   };
   socket.emit('query', {
     command: "connectDevice",
@@ -132,14 +134,14 @@ function getSliders(board) {
   var checkbox = document.createElement('input');
   checkbox.type = "checkbox";
   checkbox.addEventListener("change", function() {
-    if(this.checked) {
-        board.debug = true;
+    if (this.checked) {
+      board.debug = true;
     } else {
-        board.debug = false;
+      board.debug = false;
     }
   });
   var checkboxLabel = document.createElement("LABEL");
-  checkboxLabel.className ="switch";
+  checkboxLabel.className = "switch";
   checkboxLabel.style = "float: left;"
   checkboxLabel.appendChild(checkbox);
   checkboxLabel.appendChild(checkboxSpan);
@@ -153,6 +155,11 @@ function getSliders(board) {
   disconnectButton.className = "btn btn-danger btn-sm";
   disconnectButton.style = "float: right;"
   disconnectButton.addEventListener("click", function() {
+    socket.emit('query', {
+      command: "controlAll",
+      intensity: 0,
+      board: board
+    });
     socket.emit('query', {
       command: "disconnectDevice",
       board: board
@@ -195,10 +202,10 @@ function getSliders(board) {
       slider.setAttribute("value", board.value);
       slider.setAttribute("class", "slider");
       //slider.style.transform = "rotate(270deg)";
-      slider.id = board.boardPort + "tacta" + i;
+      slider.id = board.boardPort + "tacta-" + i;
       slider.addEventListener("change", function() {
         sliderValue.innerHTML = this.value;
-        var tactorNo = this.id.substr(this.id.indexOf('-'));
+        var tactorNo = this.id.substr(this.id.indexOf('-')+1);
         var tactor = {
           intensity: this.value,
           tactorNo: tactorNo
@@ -218,7 +225,7 @@ function getSliders(board) {
         slider.addEventListener("change", function() { //Change all sliders when the master slider is changed
           for (j = 0; j < board.limit; j++) {
             document.getElementById(board.boardPort + "sliderValue" + j).innerHTML = this.value;
-            document.getElementById(board.boardPort + "tacta" + j).value = this.value;
+            document.getElementById(board.boardPort + "tacta-" + j).value = this.value;
           }
           socket.emit('query', {
             command: "controlAll",

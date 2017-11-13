@@ -8,6 +8,7 @@ const createTable = require('data-table')
 var clients = [];
 var ports = {};
 
+
 /*****************************************************
         STARTING A LOCAL SERVER
 *****************************************************/
@@ -91,7 +92,7 @@ function connectToBoard(board) {
       if (!board.isConnected) {
         board.isConnected = true;
         ports[board.boardPort] = port;
-        io.emit('log', board.boardType + " connected at " + board.boardPort);
+        io.emit('log', board.boardType + " connected (verified) at " + board.boardPort);
         io.emit('connected', board);
       }
     }
@@ -104,7 +105,14 @@ function connectToBoard(board) {
     port.write(buffer, 'hex');
   };
   parser.on('data', respondToBoard);
-  setTimeout(verifyConnection, 1700);
+  if (!board.verifyConnection) {
+    board.isConnected = true;
+    ports[board.boardPort] = port;
+    io.emit('log', board.boardType + " connected without confirmation at " + board.boardPort);
+    io.emit('connected', board);
+  } else {
+    setTimeout(verifyConnection, 1700);
+  }
 }
 
 /*****************************************************
@@ -118,29 +126,30 @@ function disconnectDevice(board) {
     io.emit('disconnected', board);
   })
 }
+
 /*****************************************************
     BYTE ARRAYS THAT PERFORM VARIOUS TASKS
 *****************************************************/
-function enableTactorPins(board) {
+function enableTactorPins(query) {
   var buffer = new Buffer(6);
   buffer[0] = 0x2A;
   buffer[1] = 0x50;
   buffer[2] = 0x00;
   buffer[3] = 0xFF;
   buffer[4] = 0xFF;
-  buffer[5] = 0xFF;
-  ports[board.boardPort].write(buffer, 'hex');
+  buffer[5] = calculateCheckSum(buffer);
+  ports[query.board.boardPort].write(buffer, 'hex');
 }
 
 function controlAll(query) {
   var buffer = new Buffer(6);
-  buffer[0] = 0x2A;//Star
-  buffer[1] = 0x56;//V
-  buffer[2] = 0x00;//BoardID
-  buffer[3] = 0xFF;//BroadCast
-  buffer[4] = query.intensity.toString(16);//Intensity
-  buffer[5] = calculateCheckSum(buffer);//Checksum
-  //console.log(buffer);
+  buffer[0] = 0x2A; //Star
+  buffer[1] = 0x56; //V
+  buffer[2] = 0x00; //BoardID
+  buffer[3] = 0xFF; //BroadCast
+  buffer[4] = query.intensity.toString(16); //Intensity
+  buffer[5] = calculateCheckSum(buffer); //Checksum
+  console.log(buffer);
   ports[query.board.boardPort].write(buffer, 'hex');
 }
 
@@ -163,10 +172,10 @@ function toHex(d) { //CONVERT DECIMAL TO HEX
 /*****************************************************
         METHOD TO CALCULATE CHECKSUM
 *****************************************************/
-function calculateCheckSum(buffer){
+function calculateCheckSum(buffer) {
   var checkSum = buffer[0];
-  for(i=1 ;i<buffer.length-1;i++){
-  checkSum ^=buffer[i]
+  for (i = 1; i < buffer.length - 1; i++) {
+    checkSum ^= buffer[i]
   }
   return checkSum;
 }
@@ -224,7 +233,7 @@ function isInt(value) {
 *****************************************************/
 function processQuery(query) {
   if (query.constructor === "test".constructor) {
-    query = JSON.parse(query.toString());
+    query = JSON.parse(query.toString()); //CONVERT TO JSON :  NEEDED IF YOU PASS QUERY FROM WEB UI
     //io.emit('log',JSON.stringify(query.board));
   }
   if (query.command == "getPortsList") {
