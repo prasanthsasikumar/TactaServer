@@ -42,8 +42,8 @@ Please refer to it to learn how to run this application.
 | `value` | `100` | Default value that is given to the tactor. |
 | `boardTypes` | `BoardTypes` | Type of Boards Available |
 
-## For Developers
-//comming soon
+## Support
+https://ir.canterbury.ac.nz/handle/10092/15156
 
 USAGE :
 npm start
